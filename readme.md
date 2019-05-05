@@ -1,9 +1,6 @@
-需要修改的地方：
-①mian.java
-packageName：             ->包名
-name.endsWith("xxx.so")   ->so的名字
+XPOSED 实现ART NativeHook Demo 
 
-②mian.c
-PACKAGE_NAME:             ->包名
-TARGET_SO：               ->so名字
-JNI_OnLoad里面的hook代码# XposedLuaHook
+
+如果对 逆向，脱壳，新技术 感兴趣的 同学 可以加 我Q群 欢迎各位能人志士 一起讨论
+
+欢迎加入故事，群聊号码：773642813 
