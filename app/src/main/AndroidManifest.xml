@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    package="com.crack.cracktool">
+    package="com.lyh.q296488320">
 
     <uses-sdk
         android:minSdkVersion="8"
@@ -13,28 +13,28 @@
 
     <application
         android:allowBackup="true"
-        android:debuggable="true"
         android:icon="@mipmap/ic_launcher"
-        android:label="crackTool"
+        android:label="dumpLua"
         android:theme="@style/AppTheme"
-        tools:ignore="HardcodedDebugMode">
-        <activity android:name=".MainAcitity">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN"/>
-
-                <category android:name="android.intent.category.LAUNCHER"/>
-            </intent-filter>
-        </activity>
+        >
 
         <meta-data
             android:name="xposedmodule"
             android:value="true" />
         <meta-data
             android:name="xposeddescription"
-            android:value="myhook" />
+            android:value="hook" />
         <meta-data
             android:name="xposedminversion"
             android:value="54" />
+
+        <activity android:name="com.lyh.q296488320.MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
     </application>
 
 </manifest>

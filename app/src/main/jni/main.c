@@ -10,6 +10,7 @@
 
 #include <stdio.h>
 #include "include/inlineHook.h"
+#include "include/dlfcn_compat.h"
 
 
 //#include "mono/metadata/image.h"
@@ -17,9 +18,9 @@
 
 
 #define TAG "Q296488320"
-#define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, TAG, __VA_ARGS__);
-#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, TAG, __VA_ARGS__);
-
+//#define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, TAG, __VA_ARGS__);
+//#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, TAG, __VA_ARGS__);
+#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, TAG, __VA_ARGS__);
 
 jboolean isU3d = false;
 
@@ -36,15 +37,15 @@ struct _MonoImage{
 
 
 
-#define PACKAGE_NAME "com.mmcy.byjhz" // 目标应用的包名
-#define TARGET_SO "/data/data/com.mmcy.byjhz/lib/libcocos2dlua.so" // 目标应用的libcocos2dlua.so
-//#define TARGET_SO "/data/data/com.avalon.caveonline.cn.leiting/lib/libgame.so"
 
 
+//在 map里面对应的 内容
 
+// art的 so
+#define Load_SO      "/data/app/com.avalon.caveonline.cn.leiting-1/lib/arm/libcocos2dlua.so"
+// dvm 的 so路径
+#define DvmLoad_SO   "/data/data/com.lyh.q296488320/lib/libcocos2dlua.so"
 
-
-//#define TARGET_SO "/data/data/com.sqview.arcard/lib/libmono.so"
 
 
 MonoImage *  (*my_mono_image_init_mod_t)(char *data,
@@ -60,11 +61,8 @@ void free(void *__ptr);
 
 
 int my_luaL_loadbuffer(void *lua_state, char *buff, size_t size, char *name) {
-    LOGD("lua size: %d, name: %s", (uint32_t) size, name);  // 打印lua脚本的大小和名称
-
+    LOGE("lua size: %d, name: %s", (uint32_t) size, name);
     if (name != NULL) {
-        //strdup()在内部调用了malloc()为变量分配内存
-
         char *name_t = strdup(name);
         if (name_t != " " && name_t[0] != ' ') {
             FILE *file;
@@ -81,7 +79,6 @@ int my_luaL_loadbuffer(void *lua_state, char *buff, size_t size, char *name) {
                 }
                 if (strstr(name_t, ".lua")) {
                     sprintf(full_name, "%s%s", base_dir, name_t);
-                    //lua脚本保存
                     file = fopen(full_name, "wb");
                     if (file != NULL) {
                         fwrite(buff, 1, size, file);
@@ -172,67 +169,62 @@ MonoImage * my_mono_image_init_mod(char *data,
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
 
 
-    LOGD("JNI_OnLoad enter");
+    LOGE("JNI_OnLoad 开始加载");
     //在 onload 改变 指定函数 函数地址 替换成自己的
     JNIEnv *env = NULL;
     if ((*vm)->GetEnv(vm, (void **) &env, JNI_VERSION_1_6) == JNI_OK) {
-        LOGD("GetEnv OK");
-
-        char so_name[128] = {0};
-        //吧 TARGET_SO 内容写到so_name
-        sprintf(so_name, TARGET_SO, PACKAGE_NAME);
-        //该函数将打开一个新库 返回个句柄
-        void *handle = dlopen(so_name, RTLD_NOW);
+        LOGE("GetEnv OK");
+        void *handle=NULL;
 
 
+        if(get_sdk_level() <= 19){
+            // 4.4 直接 dlopen打开 就行 没有
+            // dlopen限制 可以加载 任意路径的 so
+             handle = dlopen(DvmLoad_SO, RTLD_NOW);
+            LOGE("在 DVM 拿句柄 ");
+        } else{
+            handle = dlopen_compat(Load_SO, RTLD_NOW);
+            LOGE("在 ART 拿句柄  ");
+        }
         if (handle) {
-            LOGD("dlopen() return %08x", (uint32_t) handle);
-
-
+            LOGE("拿到 so 地址 ");
             if (isU3d) {
                 //从句柄里拿到 luaL_loadbuffer 函数
                 //根据 动态链接库 操作句柄(handle)与符号(symbol)，
                 // 返回符号对应的地址。使用这个函数不但可以获取函数地址，
                 // 也可以获取变量地址。
                 //是否是 dump  u3d的
-                void *mono_image_open = dlsym(handle, "mono_image_open_from_data_with_name");
+                void *mono_image_open = dlsym_compat(handle, "mono_image_open_from_data_with_name");
 
-                LOGD("dlsym() ", (uint32_t) mono_image_open);
                 if (mono_image_open) {
                     if (ELE7EN_OK == registerInlineHook((uint32_t) mono_image_open,
                                                         (uint32_t) my_mono_image_init_mod,
                                                         (uint32_t **) &my_mono_image_init_mod_t)) {
 
-                        LOGD("registerInlineHook mono_image_open_from_data_with_name success");
                         if (ELE7EN_OK == inlineHook((uint32_t) mono_image_open)) {
-                            LOGD("inlineHook mono_image_open_from_data_with_name success");
-                        } else {
-                            LOGD("inlineHook mono_image_open_from_data_with_name failure");
+                            LOGE("inlineHook mono_image_open_from_data_with_name success");
                         }
-                    } else {
-                        LOGD("registerInlineHook mono_image_open_from_data_with_name failure");
                     }
                 }
 ///         dump lua的 Hook的 函数
             } else {
-                LOGD(TAG, "Lua");
-                void *luabuffer = dlsym(handle, "luaL_loadbuffer");       //luaL_loadbuffer
-                LOGD(TAG, "luaL_loadbuffer");
+                LOGE(TAG, "开始 Hook Lua");
+                void *luabuffer = dlsym_compat(handle, "luaL_loadbuffer");
+
                 if (luabuffer) {
-                    LOGD("luaL_loadbuffer function address:%08X", (uint32_t) luabuffer);
-                    //这行 是 你需要 Hook的 函数 和原函数名字的 地址进行替换
+                    LOGE(TAG, "拿到了 luaL_loadbuffer 地址 ");
                     if (ELE7EN_OK == registerInlineHook((uint32_t) luabuffer,
                                                         (uint32_t) my_luaL_loadbuffer,
                                                         (uint32_t **) &origin_luaL_loadbuffer)) {
-                        LOGD("registerInlineHook luaL_loadbuffer success");
+
                         if (ELE7EN_OK == inlineHook((uint32_t) luabuffer)) {
-                            LOGD("inlineHook luaL_loadbuffer success");
+                            LOGE("挂钩成功 luaL_loadbuffer ");
                         }
                     }
                 }
             }
         }
-        LOGD("JNI_OnLoad leave");
+        LOGE("JNI_OnLoad leave");
         return JNI_VERSION_1_6;
     }
 }

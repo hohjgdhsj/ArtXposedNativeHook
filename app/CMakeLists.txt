@@ -1,22 +1,32 @@
-# For more information about using CMake with Android Studio, read the
-# documentation: https://d.android.com/studio/projects/add-native-code.html
 
 # Sets the minimum version of CMake required to build the native library.
-
+#指定 需要CMAKE的 最小版本要求
 cmake_minimum_required(VERSION 3.4.1)
+
+
 
 # Creates and names a library, sets it as either STATIC
 # or SHARED, and provides the relative paths to its source code.
 # You can define multiple libraries, and CMake builds them for you.
 # Gradle automatically packages shared libraries with your APK.
 
-add_library( # Sets the name of the library.
+
+
+
+
+
+#添加一个 远程链接库
+add_library( # Sets the name of the library. (我们用C/C++ 文件生成的 动态库 so名字 )
              dumpLua
 
-             # Sets the library as a shared library.
+             # Sets the library as a shared library.(表明用于共享的 动态库 so结尾)
              SHARED
 
-             # Provides a relative path to your source file(s).
+             # Provides a relative path to your source file(s).(
+             # 这里就是 我们的 C的 文件的 路径 可以修改 有多少个 文件
+             # 就添加多个 文件 如果 需要 生成 多个 so就需要 添加多个 add_library)
+             src/main/jni/dlfcn_nougat.c
+             src/main/jni/dlfcn_compat.c
              src/main/jni/inlineHook.c
              src/main/jni/relocate.c
              src/main/jni/main.c )
@@ -27,7 +37,7 @@ add_library( # Sets the name of the library.
 # you want to add. CMake verifies that the library exists before
 # completing its build.
 
-find_library( # Sets the name of the path variable.
+find_library( # Sets the name of the path variable.（调用系统的日志库）
               log-lib
 
               # Specifies the name of the NDK library that
@@ -38,7 +48,7 @@ find_library( # Sets the name of the path variable.
 # can link multiple libraries, such as libraries you define in this
 # build script, prebuilt third-party libraries, or system libraries.
 
-target_link_libraries( # Specifies the target library.
+target_link_libraries( # Specifies the target library. 链接 我们自己生成的库 名字要和add_library 一样
                        dumpLua
 
                        # Links the target library to the log library
